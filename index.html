@@ -12,8 +12,8 @@
         }
         body {
             overflow: hidden;
-            background-color: #222;
-            font-family: 'Arial', sans-serif;
+            background-color: #5d8a6e;
+            font-family: Arial, sans-serif;
             touch-action: none;
         }
         #game-container {
@@ -34,112 +34,144 @@
             justify-content: center;
             align-items: center;
             z-index: 100;
-            transition: opacity 0.5s ease-out;
-        }
-        .loading-content {
-            text-align: center;
-            color: white;
-        }
-        .loading-content h1 {
-            font-size: 3em;
-            margin-bottom: 20px;
-            color: #f8e3c4;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-        .loading-bar {
-            width: 300px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            margin: 20px auto;
-            overflow: hidden;
-        }
-        .loading-bar-fill {
-            height: 100%;
-            width: 0;
-            background: #f8e3c4;
-            transition: width 0.3s ease;
         }
         .loading-text {
-            margin-top: 15px;
-            font-size: 1.2em;
-            color: #f8e3c4;
-        }
-        #hud {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
-            pointer-events: none;
-        }
-        #score {
-            font-size: 24px;
             color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            margin-bottom: 10px;
-        }
-        #game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 64px;
-            color: #ff0000;
-            text-shadow: 4px 4px 0 #000;
-            font-family: 'Arial', sans-serif;
-            text-align: center;
-            display: none;
-            z-index: 100;
-        }
-        #restart-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
             font-size: 24px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            display: none;
-        }
-        #controls {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            color: white;
-            font-size: 16px;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            display: none;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
 </head>
 <body>
     <div id="game-container"></div>
-    <div id="ui-overlay">
-        <div id="loading-screen" class="screen">
-            <div class="loading-content">
-                <h1>Cozy Game</h1>
-                <div class="loading-bar">
-                    <div class="loading-bar-fill"></div>
-                </div>
-                <div class="loading-text">Loading...</div>
-            </div>
-        </div>
-        <div id="hud">
-            <div id="score">Score: 0</div>
-        </div>
-        <div id="game-over">
-            GAME OVER
-            <button id="restart-btn">Play Again</button>
-        </div>
-        <div id="controls">
-            <div>Arrow Keys: Move</div>
-            <div>Space: Jump</div>
-        </div>
+    <div id="loading-screen">
+        <div class="loading-text">Loading...</div>
     </div>
-    <script src="js/game.js"></script>
+    <script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        let player;
+        let platforms;
+        let cursors;
+        let score = 0;
+        let scoreText;
+        let gameOver = false;
+        let coins;
+
+        const game = new Phaser.Game(config);
+
+        function preload() {
+            // No external assets for now
+            this.load.on('complete', () => {
+                document.getElementById('loading-screen').style.display = 'none';
+            });
+        }
+
+        function create() {
+            // Create world bounds
+            this.physics.world.setBounds(0, 0, 1600, 600);
+            
+            // Create platforms
+            platforms = this.physics.add.staticGroup();
+            
+            // Add ground
+            const ground = platforms.create(400, 568, null).setScale(2).refreshBody();
+            ground.setSize(800, 64);
+            ground.setDisplaySize(800, 64);
+            ground.setVisible(false);
+            
+            // Add other platforms
+            createPlatform(this, 600, 400, 200, 32);
+            createPlatform(this, 50, 250, 200, 32);
+            createPlatform(this, 750, 220, 200, 32);
+            
+            // Create player
+            player = this.physics.add.rectangle(100, 450, 32, 48, 0x00ff00);
+            player.setBounce(0.2);
+            player.setCollideWorldBounds(true);
+            
+            // Create coins
+            coins = this.physics.add.group();
+            for (let i = 0; i < 5; i++) {
+                const x = Phaser.Math.Between(50, 1550);
+                const y = Phaser.Math.Between(0, 500);
+                const coin = coins.create(x, y, null);
+                coin.setCircle(8);
+                coin.setDisplaySize(16, 16);
+                coin.setFillStyle(0xffff00);
+            }
+            
+            // Set up collisions
+            this.physics.add.collider(player, platforms);
+            this.physics.add.overlap(player, coins, collectCoin, null, this);
+            
+            // Camera follow
+            this.cameras.main.setBounds(0, 0, 1600, 600);
+            this.cameras.main.startFollow(player, true, 0.08, 0.08);
+            
+            // Controls
+            cursors = this.input.keyboard.createCursorKeys();
+            
+            // Score text
+            scoreText = this.add.text(16, 16, 'Score: 0', { 
+                fontSize: '24px', 
+                fill: '#fff',
+                fontFamily: 'Arial',
+                stroke: '#000',
+                strokeThickness: 4
+            });
+            scoreText.setScrollFactor(0);
+        }
+
+        function createPlatform(scene, x, y, width, height) {
+            const platform = platforms.create(x, y, null);
+            platform.setSize(width, height);
+            platform.setDisplaySize(width, height);
+            platform.setVisible(false);
+            const graphics = scene.add.graphics();
+            graphics.fillStyle(0x8b4513, 1);
+            graphics.fillRect(x - width/2, y - height/2, width, height);
+            return platform;
+        }
+
+        function update() {
+            if (gameOver) return;
+            
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+            } else {
+                player.setVelocityX(0);
+            }
+            
+            if ((cursors.up.isDown || cursors.space.isDown) && player.body.touching.down) {
+                player.setVelocityY(-330);
+            }
+        }
+
+        function collectCoin(player, coin) {
+            coin.disableBody(true, true);
+            score += 10;
+            scoreText.setText('Score: ' + score);
+        }
+    </script>
 </body>
 </html>
