@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozy Game</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    <div id="ui-overlay">
+        <div id="loading-screen" class="screen">
+            <div class="loading-content">
+                <h1>Cozy Game</h1>
+                <div class="loading-bar">
+                    <div class="loading-bar-fill"></div>
+                </div>
+                <div class="loading-text">Loading...</div>
+            </div>
+        </div>
+        <div id="hud">
+            <div id="inventory">
+                <div class="inventory-slot" id="inventory-slot-1"></div>
+                <div class="inventory-slot" id="inventory-slot-2"></div>
+                <div class="inventory-slot" id="inventory-slot-3"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/game.js"></script>
+</body>
+</html>
