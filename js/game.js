@@ -1,4 +1,3 @@
-@"
 // Game configuration
 const config = {
     type: Phaser.AUTO,
@@ -10,7 +9,7 @@ const config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 0 },
+            gravity: { y: 300 },
             debug: false
         }
     },
@@ -21,30 +20,50 @@ const config = {
     }
 };
 
-// Initialize the game
-const game = new Phaser.Game(config);
-
 // Game variables
 let player;
 let cursors;
-let lastUpdate = 0;
-const PLAYER_SPEED = 150;
+let score = 0;
+let scoreText;
+let gameOver = false;
+let coins;
+let bombs;
+let platforms;
+let stars;
+let particles;
+let emitter;
+let collectSound;
+let jumpSound;
+let gameOverSound;
+let light;
+let isMobile = false;
+
+// Initialize the game
+const game = new Phaser.Game(config);
 
 function preload() {
-    // Load player sprite from Kenney's assets
-    this.load.spritesheet('player', 'https://kenney.nl/assets/character_spritesheet.png', {
+    // Load assets
+    this.load.setBaseURL('https://labs.phaser.io');
+    
+    // Player
+    this.load.spritesheet('dude', 'assets/games/firstgame/dude.png', {
         frameWidth: 32,
-        frameHeight: 32
+        frameHeight: 48
     });
     
-    // Load tileset from Kenney's assets
-    this.load.image('tiles', 'https://kenney.nl/assets/terrain.png');
+    // Platforms
+    this.load.image('ground', 'assets/skies/background1.png');
+    this.load.image('platform', 'assets/skies/background2.png');
     
-    // Create a simple map programmatically
-    this.cache.tilemap.entries.set('map', {
-        format: Phaser.Tilemaps.Formats.ARRAY_2D,
-        data: createSimpleMap(this)
-    });
+    // Collectibles
+    this.load.image('coin', 'assets/sprites/coin.png');
+    this.load.image('bomb', 'assets/sprites/bomb.png');
+    this.load.image('star', 'assets/particles/blue.png');
+    
+    // Sounds
+    this.load.audio('collect', 'assets/audio/official/soundfx/coin2.wav');
+    this.load.audio('jump', 'assets/audio/official/soundfx/jump.wav');
+    this.load.audio('gameOver', 'assets/audio/official/soundfx/gameover.mp3');
     
     // Update loading progress
     this.load.on('progress', (value) => {
@@ -52,125 +71,124 @@ function preload() {
     });
 }
 
-function createSimpleMap() {
-    // Create a 40x30 grid map
-    const map = [];
-    const size = { width: 40, height: 30 };
-    
-    // Fill with grass (tile 3 in the tileset)
-    for (let y = 0; y < size.height; y++) {
-        const row = [];
-        for (let x = 0; x < size.width; x++) {
-            // Create a border of water (tile 0) and fill the rest with grass (tile 3)
-            if (x === 0 || y === 0 || x === size.width - 1 || y === size.height - 1) {
-                row.push(0); // Water
-            } else if (x % 10 === 0 && y % 10 === 0) {
-                row.push(2); // Tree
-            } else if (x % 8 === 0 && y % 8 === 0) {
-                row.push(1); // Flower
-            } else {
-                row.push(3); // Grass
-            }
-        }
-        map.push(row);
-    }
-    
-    // Add some paths
-    for (let x = 5; x < 35; x++) {
-        map[15][x] = 4; // Dirt path
-    }
-    for (let y = 5; y < 25; y++) {
-        map[y][20] = 4; // Dirt path
-    }
-    
-    return map;
-}
-
 function create() {
-    // Create a blank tilemap
-    const map = this.make.tilemap({
-        tileWidth: 32,
-        tileHeight: 32,
-        width: 40,
-        height: 30
-    });
+    // Create world bounds
+    this.physics.world.setBounds(0, 0, 1600, 600);
     
-    // Add the tileset image
-    const tileset = map.addTilesetImage('tiles');
+    // Create platforms
+    platforms = this.physics.add.staticGroup();
     
-    // Create layers
-    const groundLayer = map.createBlankLayer('Ground', tileset);
+    // Add ground
+    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
     
-    // Fill the layer with our map data
-    const mapData = this.cache.tilemap.get('map').data;
-    groundLayer.weightedRandomize([
-        { index: 0, weight: 1 },  // Water
-        { index: 1, weight: 5 },  // Flower
-        { index: 2, weight: 2 },  // Tree
-        { index: 3, weight: 20 }, // Grass
-        { index: 4, weight: 10 }  // Dirt path
-    ], 0, 0, 40, 30);
-    
-    // Set up collision for water and trees
-    groundLayer.setCollision([0, 2]);
+    // Add other platforms
+    platforms.create(600, 400, 'platform');
+    platforms.create(50, 250, 'platform');
+    platforms.create(750, 220, 'platform');
     
     // Create player
-    player = this.physics.add.sprite(400, 300, 'player');
+    player = this.physics.add.sprite(100, 450, 'dude');
+    player.setBounce(0.2);
     player.setCollideWorldBounds(true);
     
-    // Set up player animations
+    // Player animations
     this.anims.create({
-        key: 'walk-down',
-        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
         frameRate: 10,
         repeat: -1
     });
     
     this.anims.create({
-        key: 'walk-up',
-        frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
-        frameRate: 10,
-        repeat: -1
+        key: 'turn',
+        frames: [ { key: 'dude', frame: 4 } ],
+        frameRate: 20
     });
     
     this.anims.create({
-        key: 'walk-left',
-        frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
         frameRate: 10,
         repeat: -1
     });
     
-    this.anims.create({
-        key: 'walk-right',
-        frames: this.anims.generateFrameNumbers('player', { start: 12, end: 15 }),
-        frameRate: 10,
-        repeat: -1
+    // Create coins
+    coins = this.physics.add.group();
+    for (let i = 0; i < 12; i++) {
+        const x = Phaser.Math.Between(50, 1550);
+        const y = Phaser.Math.Between(0, 500);
+        coins.create(x, y, 'coin').setScale(0.5);
+    }
+    
+    // Create bombs
+    bombs = this.physics.add.group();
+    
+    // Create stars
+    stars = this.physics.add.group({
+        key: 'star',
+        repeat: 11,
+        setXY: { x: 12, y: 0, stepX: 70 }
     });
     
-    // Set up camera
-    this.cameras.main.setBounds(0, 0, 40 * 32, 30 * 32);
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+    stars.children.iterate((child) => {
+        child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+    });
     
-    // Set up physics
-    this.physics.add.collider(player, groundLayer);
+    // Create particles
+    particles = this.add.particles('star');
+    emitter = particles.createEmitter({
+        speed: 100,
+        scale: { start: 0.5, end: 0 },
+        blendMode: 'ADD'
+    });
     
-    // Set up controls
+    // Load sounds
+    collectSound = this.sound.add('collect');
+    jumpSound = this.sound.add('jump');
+    gameOverSound = this.sound.add('gameOver');
+    
+    // Set up collisions
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(stars, platforms);
+    this.physics.add.collider(bombs, platforms);
+    this.physics.add.collider(player, bombs, hitBomb, null, this);
+    
+    // Collect star
+    this.physics.add.overlap(player, stars, collectStar, null, this);
+    
+    // Collect coin
+    this.physics.add.overlap(player, coins, collectCoin, null, this);
+    
+    // Camera follow
+    this.cameras.main.setBounds(0, 0, 1600, 600);
+    this.cameras.main.startFollow(player, true, 0.08, 0.08);
+    this.cameras.main.setZoom(1.5);
+    
+    // Lighting
+    this.lights.enable().setAmbientColor(0x555555);
+    light = this.lights.addLight(0, 0, 200, 0xffffff, 1);
+    
+    // Controls
     cursors = this.input.keyboard.createCursorKeys();
     
-    // Add interaction
-    this.input.keyboard.on('keydown-SPACE', () => {
-        // Check for interactable objects
-        const tileX = Math.floor(player.x / 32);
-        const tileY = Math.floor(player.y / 32);
-        const tile = groundLayer.getTileAt(tileX, tileY);
+    // Mobile detection
+    isMobile = this.sys.game.device.input.touch;
+    
+    // Touch controls for mobile
+    if (isMobile) {
+        this.input.on('pointerdown', (pointer) => {
+            if (pointer.y < 400) {
+                // Jump if touching top half of screen
+                if (player.body.touching.down) {
+                    player.setVelocityY(-330);
+                    jumpSound.play();
+                }
+            }
+        });
         
-        if (tile && tile.index === 1) { // Flower
-            // Pick the flower
-            groundLayer.removeTileAt(tileX, tileY);
-            // TODO: Add to inventory
-            console.log('Picked a flower!');
-        }
-    });
+        // Show mobile controls
+        document.getElementById('controls').style.display = 'block';
+    }
     
     // Hide loading screen
     setTimeout(() => {
@@ -179,40 +197,112 @@ function create() {
             document.getElementById('loading-screen').style.display = 'none';
         }, 500);
     }, 500);
+    
+    // Score text
+    scoreText = document.getElementById('score');
+    
+    // Game over UI
+    const gameOverText = document.getElementById('game-over');
+    const restartBtn = document.getElementById('restart-btn');
+    
+    restartBtn.addEventListener('click', () => {
+        gameOver = false;
+        gameOverText.style.display = 'none';
+        restartBtn.style.display = 'none';
+        score = 0;
+        updateScore(0);
+        this.scene.restart();
+    });
 }
 
 function update() {
-    // Reset velocity
-    player.setVelocity(0);
+    if (gameOver) return;
     
-    // Handle movement
+    // Update light position to follow player
+    light.x = player.x;
+    light.y = player.y;
+    
+    // Simple day/night cycle
+    const time = this.time.now * 0.001;
+    const brightness = 0.5 + Math.sin(time * 0.5) * 0.5;
+    light.intensity = brightness;
+    this.lights.setAmbientColor(Phaser.Display.Color.GetColor(
+        100 + brightness * 100,
+        100 + brightness * 100,
+        150 + brightness * 100
+    ));
+    
+    // Player movement
     if (cursors.left.isDown) {
-        player.setVelocityX(-PLAYER_SPEED);
-        player.anims.play('walk-left', true);
-        player.lastDirection = 'left';
+        player.setVelocityX(-160);
+        player.anims.play('left', true);
     } else if (cursors.right.isDown) {
-        player.setVelocityX(PLAYER_SPEED);
-        player.anims.play('walk-right', true);
-        player.lastDirection = 'right';
+        player.setVelocityX(160);
+        player.anims.play('right', true);
+    } else {
+        player.setVelocityX(0);
+        player.anims.play('turn');
     }
     
-    if (cursors.up.isDown) {
-        player.setVelocityY(-PLAYER_SPEED);
-        player.anims.play('walk-up', true);
-        player.lastDirection = 'up';
-    } else if (cursors.down.isDown) {
-        player.setVelocityY(PLAYER_SPEED);
-        player.anims.play('walk-down', true);
-        player.lastDirection = 'down';
+    // Jumping
+    if ((cursors.up.isDown || cursors.space.isDown) && player.body.touching.down) {
+        player.setVelocityY(-330);
+        jumpSound.play();
     }
     
-    // Stop animation if no movement
-    if (cursors.up.isUp && cursors.down.isUp && cursors.left.isUp && cursors.right.isUp) {
-        player.anims.stop();
-        // Set idle frame based on last direction
-        if (player.lastDirection) {
-            player.setFrame(player.anims.get('walk-' + player.lastDirection).frames[0].frame.index);
-        }
+    // Spawn bombs
+    if (Phaser.Math.RND.frac() < 0.005) {
+        const x = player.x + Phaser.Math.Between(-400, 400);
+        const bomb = bombs.create(x, 16, 'bomb');
+        bomb.setBounce(1);
+        bomb.setCollideWorldBounds(true);
+        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
     }
 }
-"@ | Out-File -FilePath "C:\cozy-game\js\game.js" -Encoding utf8
+
+function collectCoin(player, coin) {
+    coin.disableBody(true, true);
+    collectSound.play();
+    updateScore(10);
+    
+    // Emit particles
+    emitter.setPosition(coin.x, coin.y);
+    emitter.explode(10);
+}
+
+function collectStar(player, star) {
+    star.disableBody(true, true);
+    collectSound.play();
+    updateScore(20);
+    
+    // Emit particles
+    emitter.setPosition(star.x, star.y);
+    emitter.explode(20);
+    
+    //  Add and update the score
+    if (stars.countActive(true) === 0) {
+        //  A new batch of stars to collect
+        stars.children.iterate((child) => {
+            child.enableBody(true, child.x, 0, true, true);
+        });
+    }
+}
+
+function hitBomb(player, bomb) {
+    this.physics.pause();
+    player.setTint(0xff0000);
+    player.anims.play('turn');
+    gameOver = true;
+    gameOverSound.play();
+    
+    // Show game over screen
+    const gameOverText = document.getElementById('game-over');
+    const restartBtn = document.getElementById('restart-btn');
+    gameOverText.style.display = 'block';
+    restartBtn.style.display = 'block';
+}
+
+function updateScore(points) {
+    score += points;
+    scoreText.textContent = `Score: ${score}`;
+}
