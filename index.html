@@ -78,17 +78,39 @@
         const game = new Phaser.Game(config);
 
         function preload() {
-            // No external assets for now
+            // Create a blank texture for the player
+            const renderer = this.game.renderer;
+            const tempGraphics = this.add.graphics();
+            
+            // Create player texture (green rectangle)
+            tempGraphics.fillStyle(0x00ff00, 1);
+            tempGraphics.fillRect(0, 0, 32, 48);
+            const playerTexture = renderer.createCanvasTexture('player', 32, 48);
+            playerTexture.draw(0, 0, tempGraphics.canvas);
+            
+            // Create coin texture (yellow circle)
+            tempGraphics.clear();
+            tempGraphics.fillStyle(0xffff00, 1);
+            tempGraphics.fillCircle(16, 16, 16);
+            const coinTexture = renderer.createCanvasTexture('coin', 32, 32);
+            coinTexture.draw(0, 0, tempGraphics.canvas);
+            
+            // Clean up
+            tempGraphics.destroy();
+            
             this.load.on('complete', () => {
                 document.getElementById('loading-screen').style.display = 'none';
             });
+            
+            // Force load complete since we're not loading any files
+            this.load.emit('complete');
         }
 
         function create() {
             // Create world bounds
             this.physics.world.setBounds(0, 0, 1600, 600);
             
-            // Create platforms
+            // Create platforms group
             platforms = this.physics.add.staticGroup();
             
             // Add ground
@@ -103,19 +125,19 @@
             createPlatform(this, 750, 220, 200, 32);
             
             // Create player
-            player = this.physics.add.rectangle(100, 450, 32, 48, 0x00ff00);
+            player = this.physics.add.sprite(100, 450, 'player');
             player.setBounce(0.2);
             player.setCollideWorldBounds(true);
+            player.setSize(32, 48, true);
             
             // Create coins
             coins = this.physics.add.group();
             for (let i = 0; i < 5; i++) {
                 const x = Phaser.Math.Between(50, 1550);
                 const y = Phaser.Math.Between(0, 500);
-                const coin = coins.create(x, y, null);
-                coin.setCircle(8);
-                coin.setDisplaySize(16, 16);
-                coin.setFillStyle(0xffff00);
+                const coin = coins.create(x, y, 'coin');
+                coin.setCircle(16);
+                coin.setScale(0.5);
             }
             
             // Set up collisions
