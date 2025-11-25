@@ -61,7 +61,6 @@
                 }
             },
             scene: {
-                preload: preload,
                 create: create,
                 update: update
             }
@@ -73,76 +72,72 @@
         let score = 0;
         let scoreText;
         let gameOver = false;
-        let coins;
+        let coins = [];
+        let coinGraphics = [];
 
         const game = new Phaser.Game(config);
 
-        function preload() {
-            // Create a blank texture for the player
-            const renderer = this.game.renderer;
-            const tempGraphics = this.add.graphics();
-            
-            // Create player texture (green rectangle)
-            tempGraphics.fillStyle(0x00ff00, 1);
-            tempGraphics.fillRect(0, 0, 32, 48);
-            const playerTexture = renderer.createCanvasTexture('player', 32, 48);
-            playerTexture.draw(0, 0, tempGraphics.canvas);
-            
-            // Create coin texture (yellow circle)
-            tempGraphics.clear();
-            tempGraphics.fillStyle(0xffff00, 1);
-            tempGraphics.fillCircle(16, 16, 16);
-            const coinTexture = renderer.createCanvasTexture('coin', 32, 32);
-            coinTexture.draw(0, 0, tempGraphics.canvas);
-            
-            // Clean up
-            tempGraphics.destroy();
-            
-            this.load.on('complete', () => {
-                document.getElementById('loading-screen').style.display = 'none';
-            });
-            
-            // Force load complete since we're not loading any files
-            this.load.emit('complete');
-        }
-
         function create() {
+            // Hide loading screen
+            document.getElementById('loading-screen').style.display = 'none';
+            
             // Create world bounds
             this.physics.world.setBounds(0, 0, 1600, 600);
             
-            // Create platforms group
+            // Create platforms
+            const platformGraphics = this.add.graphics();
+            platformGraphics.fillStyle(0x8b4513, 1);
+            
+            // Ground
             platforms = this.physics.add.staticGroup();
+            const ground = platforms.create(400, 584, null).setSize(800, 32, false);
+            platformGraphics.fillRect(0, 568, 1600, 32);
             
-            // Add ground
-            const ground = platforms.create(400, 568, null).setScale(2).refreshBody();
-            ground.setSize(800, 64);
-            ground.setDisplaySize(800, 64);
-            ground.setVisible(false);
-            
-            // Add other platforms
-            createPlatform(this, 600, 400, 200, 32);
-            createPlatform(this, 50, 250, 200, 32);
-            createPlatform(this, 750, 220, 200, 32);
+            // Other platforms
+            createPlatform(this, platformGraphics, 600, 400, 200, 32);
+            createPlatform(this, platformGraphics, 50, 250, 200, 32);
+            createPlatform(this, platformGraphics, 750, 220, 200, 32);
             
             // Create player
-            player = this.physics.add.sprite(100, 450, 'player');
-            player.setBounce(0.2);
-            player.setCollideWorldBounds(true);
-            player.setSize(32, 48, true);
+            player = this.physics.add.sprite(100, 450, null);
+            this.physics.add.existing(player);
+            player.body.setSize(32, 48);
+            player.body.setOffset(0, 0);
+            
+            // Create player graphics
+            const playerGraphics = this.add.graphics();
+            playerGraphics.fillStyle(0x00ff00, 1);
+            playerGraphics.fillRect(-16, -24, 32, 48);
+            playerGraphics.setPosition(player.x, player.y);
+            playerGraphics.setScrollFactor(0);
             
             // Create coins
-            coins = this.physics.add.group();
-            for (let i = 0; i < 5; i++) {
-                const x = Phaser.Math.Between(50, 1550);
-                const y = Phaser.Math.Between(0, 500);
-                const coin = coins.create(x, y, 'coin');
-                coin.setCircle(16);
-                coin.setScale(0.5);
-            }
+            const coinPositions = [
+                {x: 200, y: 400},
+                {x: 350, y: 300},
+                {x: 500, y: 200},
+                {x: 800, y: 150},
+                {x: 1000, y: 250}
+            ];
+            
+            coinPositions.forEach((pos, index) => {
+                const coin = this.physics.add.sprite(pos.x, pos.y, null);
+                coin.body.setSize(16, 16);
+                coin.body.setOffset(0, 0);
+                
+                const coinGraphic = this.add.graphics();
+                coinGraphic.fillStyle(0xffff00, 1);
+                coinGraphic.fillCircle(0, 0, 8);
+                coinGraphic.setPosition(coin.x, coin.y);
+                coinGraphic.setScrollFactor(0);
+                
+                coins.push(coin);
+                coinGraphics.push(coinGraphic);
+            });
             
             // Set up collisions
             this.physics.add.collider(player, platforms);
-            this.physics.add.overlap(player, coins, collectCoin, null, this);
+            this.physics.add.collider(coins, platforms);
             
             // Camera follow
             this.cameras.main.setBounds(0, 0, 1600, 600);
@@ -160,15 +155,25 @@
                 strokeThickness: 4
             });
             scoreText.setScrollFactor(0);
+            
+            // Update graphics positions
+            this.events.on('postupdate', () => {
+                // Update player graphic
+                playerGraphics.setPosition(player.x, player.y);
+                
+                // Update coin graphics
+                coins.forEach((coin, index) => {
+                    if (coin.active) {
+                        coinGraphics[index].setPosition(coin.x, coin.y);
+                    }
+                });
+            });
         }
 
-        function createPlatform(scene, x, y, width, height) {
-            const platform = platforms.create(x, y, null);
+        function createPlatform(scene, graphics, x, y, width, height) {
+            const platform = scene.physics.add.staticGroup().create(x, y, null);
             platform.setSize(width, height);
-            platform.setDisplaySize(width, height);
-            platform.setVisible(false);
-            const graphics = scene.add.graphics();
-            graphics.fillStyle(0x8b4513, 1);
+            platform.setOrigin(0.5, 0.5);
             graphics.fillRect(x - width/2, y - height/2, width, height);
             return platform;
         }
@@ -176,6 +181,7 @@
         function update() {
             if (gameOver) return;
             
+            // Player movement
             if (cursors.left.isDown) {
                 player.setVelocityX(-160);
             } else if (cursors.right.isDown) {
@@ -184,15 +190,23 @@
                 player.setVelocityX(0);
             }
             
+            // Jumping
             if ((cursors.up.isDown || cursors.space.isDown) && player.body.touching.down) {
                 player.setVelocityY(-330);
             }
-        }
-
-        function collectCoin(player, coin) {
-            coin.disableBody(true, true);
-            score += 10;
-            scoreText.setText('Score: ' + score);
+            
+            // Coin collection
+            coins.forEach((coin, index) => {
+                if (coin.active && Phaser.Geom.Intersects.RectangleToRectangle(
+                    player.getBounds(),
+                    coin.getBounds()
+                )) {
+                    coin.disableBody(true, true);
+                    coinGraphics[index].setVisible(false);
+                    score += 10;
+                    scoreText.setText('Score: ' + score);
+                }
+            });
         }
     </script>
 </body>
