@@ -27,11 +27,16 @@ creates their own character.
 Characters save every 30 seconds and when a player leaves. Back up `data/characters.json`
 to keep them safe. Passwords are stored hashed.
 
-## Playing from outside the house
+## Running on a server (Debian or Ubuntu)
 
-Run the same server on any host that supports Node.js and WebSockets, and give it a
-persistent disk for `DATA_DIR`. Use HTTPS there: the page switches to a secure
-WebSocket automatically.
+    curl -fsSL https://raw.githubusercontent.com/ian-dungan/cozy-game/claude/zealous-goldberg-rzi65r/gloamwood/deploy/install.sh | sudo bash
+
+This installs Node.js if needed, puts the game in `/opt/gloamwood`, saves characters in
+`/var/lib/gloamwood`, and runs it as the `gloamwood` service on port 8080. Run it again to
+update. Prefix options like this: `... | sudo PORT=80 GM_NAMES=yourname bash`.
+
+Without HTTPS, passwords travel unencrypted. For a public address, put a reverse proxy
+with a certificate (for example Caddy) in front of it.
 
 ## Layout
 
