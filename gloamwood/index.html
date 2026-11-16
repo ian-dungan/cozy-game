@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gloamwood</title>
+<link rel="stylesheet" href="css/ui.css">
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="ui" class="hidden">
+  <div id="pwin" class="panel">
+    <div id="pname"></div>
+    <div class="bar"><div id="hpbar" class="fill hp"></div><span id="hptxt"></span></div>
+    <div class="bar"><div id="mpbar" class="fill mp"></div><span id="mptxt"></span></div>
+    <div class="bar thin"><div id="xpbar" class="fill xp"></div></div>
+    <div id="petrow" class="hidden"><span id="petname"></span><div class="bar thin"><div id="petbar" class="fill hp"></div></div></div>
+  </div>
+  <div id="twin" class="panel hidden">
+    <div id="tname"></div>
+    <div class="bar"><div id="thp" class="fill hp"></div></div>
+  </div>
+  <div id="zoneinfo" class="panel"></div>
+  <div id="buffs"></div>
+  <div id="gems" class="panel"></div>
+  <div id="castbar" class="hidden"><div id="castfill"></div><span id="castname"></span></div>
+  <div id="chat" class="panel">
+    <div id="log"></div>
+    <input id="cmd" maxlength="80" autocomplete="off" placeholder="Enter: type a /command   (try /help)">
+  </div>
+  <div id="btns" class="panel">
+    <button data-act="attack" id="b-attack">Attack (F)</button>
+    <button data-act="sit" id="b-sit">Sit (X)</button>
+    <button data-act="inv">Inventory (I)</button>
+    <button data-act="book">Spells (B)</button>
+    <button data-act="con">Consider (C)</button>
+    <button data-act="hail">Hail (H)</button>
+    <button data-act="help">Help</button>
+  </div>
+
+  <div id="inv" class="panel win hidden">
+    <div class="title">Inventory <span class="x" data-close="inv">x</span></div>
+    <div class="cols">
+      <div id="eqslots"></div>
+      <div><div id="bag"></div><div id="coin"></div></div>
+      <div id="stats"></div>
+    </div>
+    <div class="hint">Click an item to equip, scribe or (at a merchant) sell it. Hover for details.</div>
+  </div>
+  <div id="book" class="panel win hidden">
+    <div class="title">Spells &amp; Abilities <span class="x" data-close="book">x</span></div>
+    <div id="booklist"></div>
+    <div class="hint">Click a spell, then a slot on the left to memorize it. Right-click a slot to clear it.</div>
+  </div>
+  <div id="loot" class="panel win hidden">
+    <div class="title"><span id="lootname"></span> <span class="x" data-close="loot">x</span></div>
+    <div id="lootlist"></div>
+  </div>
+  <div id="shop" class="panel win hidden">
+    <div class="title"><span id="shopname"></span> <span class="x" data-close="shop">x</span></div>
+    <div id="shoplist"></div>
+    <div class="hint">Click to buy. Click items in your inventory to sell.</div>
+  </div>
+  <div id="help" class="panel win hidden">
+    <div class="title">How to Play <span class="x" data-close="help">x</span></div>
+    <div class="helptext">
+      <b>Move</b> W/S or arrows. <b>Turn</b> A/D. <b>Strafe</b> Q/E. <b>Jump</b> Space. <b>Autorun</b> R. Drag the mouse to look.<br>
+      <b>Target</b> click a creature, or Tab for the nearest. Esc clears it.<br>
+      <b>C</b> consider your target first. Its colour tells you how dangerous it is.<br>
+      <b>F</b> toggles auto-attack. <b>1-8</b> use your spell and ability slots.<br>
+      <b>X</b> sit to recover health and mana much faster. Standing or moving interrupts it.<br>
+      <b>Right-click</b> a corpse to loot it, or a townsperson to talk and trade. <b>H</b> hails your target.<br>
+      Casters buy scrolls from their guild in Lanternhold and click them to scribe. Moving while casting interrupts the spell.<br>
+      If you die past level 4 you lose experience and your bags stay on your corpse. Run back and right-click it.<br>
+      Commands: /sit /stand /con /loc /time /who /pet attack /pet back /pet dismiss /camp
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="hidden"><div id="loadtext"></div></div>
+
+<div id="create">
+  <div class="cbox panel">
+    <h1>Gloamwood</h1>
+    <p class="sub">An old-fashioned adventure. Slow, dangerous, and best taken one creature at a time.</p>
+    <button id="cont" class="big hidden"></button>
+    <label>Name <input id="cname" maxlength="14" value="Wayfarer" autocomplete="off"></label>
+    <div class="pick"><div class="lbl">Race</div><div id="races"></div></div>
+    <div class="pick"><div class="lbl">Class</div><div id="classes"></div></div>
+    <div id="cdesc"></div>
+    <button id="enter" class="big">Enter the World</button>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
