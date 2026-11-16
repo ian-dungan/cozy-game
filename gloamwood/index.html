@@ -16,6 +16,7 @@
     <div class="bar"><div id="mpbar" class="fill mp"></div><span id="mptxt"></span></div>
     <div class="bar thin"><div id="xpbar" class="fill xp"></div></div>
     <div id="petrow" class="hidden"><span id="petname"></span><div class="bar thin"><div id="petbar" class="fill hp"></div></div></div>
+    <div id="group"></div>
   </div>
   <div id="twin" class="panel hidden">
     <div id="tname"></div>
@@ -73,7 +74,10 @@
       <b>Right-click</b> a corpse to loot it, or a townsperson to talk and trade. <b>H</b> hails your target.<br>
       Casters buy scrolls from their guild in Lanternhold and click them to scribe. Moving while casting interrupts the spell.<br>
       If you die past level 4 you lose experience and your bags stay on your corpse. Run back and right-click it.<br>
-      Commands: /sit /stand /con /loc /time /who /pet attack /pet back /pet dismiss /camp
+      <b>Talking</b> press Enter and type to speak to those nearby. /shout reaches the zone, /ooc reaches everyone, /tell Name message is private.<br>
+      <b>Groups</b> target a player and type /invite (or /invite Name). They type /accept. Groups share experience; /g talks to the group, /disband leaves.<br>
+      Heals and blessings land on a player you have targeted, otherwise on yourself.<br>
+      Other commands: /who /sit /stand /con /loc /time /pet attack /pet back /pet dismiss
     </div>
   </div>
 </div>
@@ -84,12 +88,17 @@
   <div class="cbox panel">
     <h1>Gloamwood</h1>
     <p class="sub">An old-fashioned adventure. Slow, dangerous, and best taken one creature at a time.</p>
-    <button id="cont" class="big hidden"></button>
-    <label>Name <input id="cname" maxlength="14" value="Wayfarer" autocomplete="off"></label>
+    <div class="row2">
+      <label>Name <input id="cname" maxlength="14" autocomplete="username"></label>
+      <label>Password <input id="cpass" type="password" maxlength="64" autocomplete="current-password"></label>
+    </div>
+    <button id="login" class="big">Log In</button>
+    <div id="cerr"></div>
+    <p class="sub">New here? Pick a name and password above, choose a race and class, then create your character.</p>
     <div class="pick"><div class="lbl">Race</div><div id="races"></div></div>
     <div class="pick"><div class="lbl">Class</div><div id="classes"></div></div>
     <div id="cdesc"></div>
-    <button id="enter" class="big">Enter the World</button>
+    <button id="enter" class="big">Create Character</button>
   </div>
 </div>
 <script type="module" src="js/main.js"></script>

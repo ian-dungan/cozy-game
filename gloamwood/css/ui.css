@@ -71,3 +71,7 @@ button:hover { border-color: #e8d898; } button.on { background: linear-gradient(
 .pick button { margin: 0 3px 3px 0; } .pick button.on { background: linear-gradient(#6a5a2a, #3a2f12); border-color: #f0d890; }
 #cdesc { min-height: 56px; margin: 8px 0; color: #c8c0a8; line-height: 18px; }
 .big { display: block; width: 100%; font-size: 16px; padding: 8px; margin-top: 6px; }
+.row2 { display: flex; gap: 14px; flex-wrap: wrap; }
+#cerr { min-height: 20px; margin-top: 6px; color: #ff8a7a; text-align: center; }
+#group div { margin-top: 5px; font-size: 11px; color: #a8d8ff; }
+.c-shout { color: #ff9a6a; } .c-ooc { color: #8ae08a; } .c-tell { color: #e08aff; } .c-group { color: #7adada; }

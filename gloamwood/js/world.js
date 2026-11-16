@@ -23,47 +23,39 @@ function mkTex(kind) {
 }
 const texRep = (kind, rx, ry) => { const t = mkTex(kind).clone(); t.repeat.set(rx, ry); t.needsUpdate = true; return t; };
 
-export function buildWorld(Z, scene) {
-  const { grid: g, W, H, cell: c } = Z;
-  const ch = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? '#' : g[y][x];
+export function buildWorld(Z, scene, G) {
+  const { grid: g, W, H, cell: c } = Z, { ch, hf, vh } = G;
   const indoor = a => a === ',' || (a >= 'a' && a <= 'z');
-  const hf = (x, z) => Z.amp ? Z.amp * (.55 + .2 * (Math.sin(x * .05) + Math.cos(z * .043)) + .1 * Math.sin(x * .11 + z * .09)) : 0;
-  const R = (() => { let s = W * 31 + H; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
+  const R = (() => { let s = W * 77 + H; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; })();
 
   // Ground
-  const vh = new Float32Array((W + 1) * (H + 1));
   const geo = new THREE.PlaneGeometry(W * c, H * c, W, H); geo.rotateX(-Math.PI / 2); geo.translate(W * c / 2, 0, H * c / 2);
   const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
-  let water = false;
   for (let iy = 0; iy <= H; iy++) for (let ix = 0; ix <= W; ix++) {
     const i = iy * (W + 1) + ix, around = [ch(ix, iy), ch(ix - 1, iy), ch(ix, iy - 1), ch(ix - 1, iy - 1)];
-    let h = hf(ix * c, iy * c), k = Z.floorCol;
-    if (around.includes('~')) { h = -1.4; k = [.2, .25, .2]; water = true; }
-    else if (around.includes('=')) k = Z.pathCol;
-    else if (around.some(indoor)) k = [.42, .34, .26];
-    vh[i] = h; pos.setY(i, h);
+    let k = Z.floorCol;
+    if (around.includes('~')) k = [.2, .25, .2]; else if (around.includes('=')) k = Z.pathCol; else if (around.some(indoor)) k = [.42, .34, .26];
+    pos.setY(i, vh[i]);
     const v = .88 + R() * .24; col[i * 3] = k[0] * v; col[i * 3 + 1] = k[1] * v; col[i * 3 + 2] = k[2] * v;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals();
   scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: texRep('ground', W, H), vertexColors: true })));
-  if (water) {
+  if (G.water) {
     const wp = new THREE.Mesh(new THREE.PlaneGeometry(W * c, H * c), new THREE.MeshLambertMaterial({ color: 0x2f6a86, transparent: true, opacity: .72 }));
     wp.rotation.x = -Math.PI / 2; wp.position.set(W * c / 2, -.6, H * c / 2); scene.add(wp);
   }
 
   // Walls, ceilings, trees, rocks
-  const walls = [], ceil = [], trees = [], rocks = [], obs = new Array(W * H);
+  const walls = [], ceil = [], { trees, rocks } = G;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const a = g[y][x];
     if (a === '#') {
       let edge = false;
       for (let dy = -1; dy <= 1 && !edge; dy++) for (let dx = -1; dx <= 1; dx++) if (ch(x + dx, y + dy) !== '#') { edge = true; break; }
       if (edge) walls.push([x, y]);
-    } else if (a === 'T') { const s = .8 + R() * .7, o = { x: x * c + c / 2 + (R() - .5) * 2, z: y * c + c / 2 + (R() - .5) * 2, r: .55 * s, s }; obs[y * W + x] = o; trees.push(o); }
-    else if (a === '^') { const s = .8 + R() * 1.1, o = { x: x * c + c / 2, z: y * c + c / 2, r: 1.25 * s, s }; obs[y * W + x] = o; rocks.push(o); }
-    else if (!Z.ceiling && indoor(a)) ceil.push([x, y]);
+    } else if (!Z.ceiling && indoor(a)) ceil.push([x, y]);
   }
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), sc = new THREE.Vector3(), colr = new THREE.Color();
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v3 = new THREE.Vector3(), sc = new THREE.Vector3(), colr = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
   const inst = (geom, mat, n) => { const m = new THREE.InstancedMesh(geom, mat, n); scene.add(m); return m; };
   if (walls.length) {
     const wm = inst(new THREE.BoxGeometry(c, 1, c), new THREE.MeshLambertMaterial({ map: texRep(Z.wallTex || 'brick', 2, Z.cliff ? 4 : 3), color: Z.wallCol }), walls.length);
@@ -82,7 +74,7 @@ export function buildWorld(Z, scene) {
     const tm = inst(tg, new THREE.MeshLambertMaterial({ map: mkTex('bark'), color: 0x6a4a30 }), trees.length);
     const lm = inst(lg, new THREE.MeshLambertMaterial({ map: mkTex('leaf') }), trees.length);
     trees.forEach((o, i) => {
-      m4.compose(v3.set(o.x, hf(o.x, o.z) - .3, o.z), q.setFromAxisAngle(v3.clone().set(0, 1, 0), R() * 6), sc.set(o.s, o.s * (.9 + R() * .4), o.s));
+      m4.compose(v3.set(o.x, hf(o.x, o.z) - .3, o.z), q.setFromAxisAngle(up, o.rot), sc.set(o.s, o.s * o.sy, o.s));
       tm.setMatrixAt(i, m4); lm.setMatrixAt(i, m4);
       lm.setColorAt(i, colr.setRGB(.16 + R() * .12, .34 + R() * .2, .12 + R() * .08));
     });
@@ -93,54 +85,6 @@ export function buildWorld(Z, scene) {
     rocks.forEach((o, i) => { m4.compose(v3.set(o.x, hf(o.x, o.z) + .5 * o.s, o.z), q, sc.set(o.s, o.s * 1.5, o.s)); rm.setMatrixAt(i, m4); });
   }
   (Z.labels || []).forEach(l => { const s = makeLabel(l.t, '#f0d890', 1.6); s.position.set(l.x * c, l.h, l.y * c); scene.add(s); });
-
-  const solid = (cx, cy) => ch(cx, cy) === '#';
-  const free = (x, z, r) => {
-    const x0 = Math.floor((x - r) / c), x1 = Math.floor((x + r) / c), y0 = Math.floor((z - r) / c), y1 = Math.floor((z + r) / c);
-    for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) if (solid(xx, yy)) return false;
-    return true;
-  };
-  const dist = new Int16Array(W * H);
-  return {
-    ch, solid, free, obs,
-    cellAt: (x, z) => ch(Math.floor(x / c), Math.floor(z / c)),
-    heightAt(x, z) {
-      const fx = Math.max(0, Math.min(W - .001, x / c)), fz = Math.max(0, Math.min(H - .001, z / c)), ix = Math.floor(fx), iz = Math.floor(fz), tx = fx - ix, tz = fz - iz, i = iz * (W + 1) + ix;
-      return (vh[i] * (1 - tx) + vh[i + 1] * tx) * (1 - tz) + (vh[i + W + 1] * (1 - tx) + vh[i + W + 2] * tx) * tz;
-    },
-    // Move with wall sliding and round obstacles
-    slide(x, z, nx, nz, r) {
-      if (!free(nx, z, r)) nx = x;
-      if (!free(nx, nz, r)) nz = z;
-      const cx = Math.floor(nx / c), cy = Math.floor(nz / c);
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-        const xx = cx + dx, yy = cy + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-        const o = obs[yy * W + xx]; if (!o) continue;
-        const ddx = nx - o.x, ddz = nz - o.z, d = Math.hypot(ddx, ddz), m = o.r + r;
-        if (d < m && d > 1e-4) { nx = o.x + ddx / d * m; nz = o.z + ddz / d * m; }
-      }
-      return free(nx, nz, r) ? [nx, nz] : [x, z];
-    },
-    los(a, b) {
-      const dx = b.x - a.x, dz = b.z - a.z, n = Math.ceil(Math.hypot(dx, dz));
-      for (let i = 1; i < n; i++) if (solid(Math.floor((a.x + dx * i / n) / c), Math.floor((a.z + dz * i / n) / c))) return false;
-      return true;
-    },
-    // Breadth-first distance field from a point, used by monsters to path around walls
-    flow(x, z) {
-      dist.fill(-1); const sx = Math.floor(x / c), sy = Math.floor(z / c); if (solid(sx, sy)) return dist;
-      const qx = [sx], qy = [sy]; dist[sy * W + sx] = 0;
-      for (let h = 0; h < qx.length; h++) {
-        const cx = qx[h], cy = qy[h], d = dist[cy * W + cx] + 1;
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const xx = cx + dx, yy = cy + dy;
-          if (!solid(xx, yy) && dist[yy * W + xx] < 0) { dist[yy * W + xx] = d; qx.push(xx); qy.push(yy); }
-        }
-      }
-      return dist;
-    },
-    dist,
-  };
 }
 
 const mats = {};

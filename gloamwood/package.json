@@ -1,0 +1,9 @@
+{
+  "name": "gloamwood",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Gloamwood: an old-school multiplayer browser RPG",
+  "scripts": { "start": "node server/server.js" },
+  "dependencies": { "ws": "^8.18.0" }
+}
