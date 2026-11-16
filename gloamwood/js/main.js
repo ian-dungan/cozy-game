@@ -303,12 +303,40 @@ addEventListener('mouseup', e => {
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
+// Touch: drag the left half to move, drag the right half to look, tap to target, press and hold to loot or talk.
+const joy = { f: 0, s: 0 }, touches = {};
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault(); if (document.activeElement) document.activeElement.blur();
+  for (const t of e.changedTouches) touches[t.identifier] = { x0: t.clientX, y0: t.clientY, x: t.clientX, y: t.clientY, t: performance.now(), moved: 0, mv: t.clientX < innerWidth / 2 };
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault(); if (!P) return;
+  for (const t of e.changedTouches) {
+    const o = touches[t.identifier]; if (!o) continue;
+    const dx = t.clientX - o.x, dy = t.clientY - o.y; o.x = t.clientX; o.y = t.clientY; o.moved += Math.abs(dx) + Math.abs(dy);
+    if (o.mv) { joy.f = clamp((o.y0 - o.y) / 40, -1, 1); joy.s = clamp((o.x - o.x0) / 40, -1, 1); }
+    else if (o.moved > 8) { P.yaw -= dx * .007; P.pitch = clamp(P.pitch - dy * .007, -1.2, 1.2); }
+  }
+}, { passive: false });
+const touchEnd = e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const o = touches[t.identifier]; if (!o) continue; delete touches[t.identifier];
+    if (o.mv) joy.f = joy.s = 0;
+    if (o.moved > 10 || !P || loading || P.dead) continue;
+    const ent = pick(o.x, o.y); if (!ent) continue;
+    if (performance.now() - o.t > 400) { P.target = ent.id; dirty = true; send({ t: 'use', id: ent.id }); } else setTarget(ent);
+  }
+};
+canvas.addEventListener('touchend', touchEnd, { passive: false }); canvas.addEventListener('touchcancel', touchEnd, { passive: false });
+
 // ---------- main loop ----------
 function updPlayer(dt) {
   if (P.dead) return;
   const k = keys;
   P.yaw += ((k.KeyA || k.ArrowLeft ? 1 : 0) - (k.KeyD || k.ArrowRight ? 1 : 0)) * 2.3 * dt;
-  let f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0); const s = (k.KeyE ? 1 : 0) - (k.KeyQ ? 1 : 0);
+  let f = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0), s = (k.KeyE ? 1 : 0) - (k.KeyQ ? 1 : 0);
+  if (Math.abs(joy.f) > .35) f = Math.sign(joy.f); if (Math.abs(joy.s) > .35) s = Math.sign(joy.s);
   if (f < 0) P.autorun = false; if (P.autorun && !f) f = 1;
   if (f || s) {
     P.sitting = false; P.feign = false;

@@ -75,3 +75,18 @@ button:hover { border-color: #e8d898; } button.on { background: linear-gradient(
 #cerr { min-height: 20px; margin-top: 6px; color: #ff8a7a; text-align: center; }
 #group div { margin-top: 5px; font-size: 11px; color: #a8d8ff; }
 .c-shout { color: #ff9a6a; } .c-ooc { color: #8ae08a; } .c-tell { color: #e08aff; } .c-group { color: #7adada; }
+#view { touch-action: none; }
+/* Phones and other small screens */
+@media (max-width: 900px), (max-height: 520px) {
+  html, body { font-size: 11px; }
+  #pwin { width: 150px; padding: 4px; } #twin { width: 160px; margin-left: -80px; padding: 4px; } #zoneinfo { font-size: 10px; min-width: 0; padding: 3px 5px; top: 44px; }
+  #buffs { left: 164px; }
+  #gems { top: auto; bottom: 8px; left: auto; right: 8px; width: auto; display: grid; grid-template-columns: repeat(4, 84px); gap: 2px; padding: 3px; }
+  .gem { margin: 0; height: 26px; line-height: 24px; font-size: 10px; }
+  #btns { bottom: 72px; width: auto; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 352px; padding: 3px; }
+  #btns button { font-size: 10px; padding: 5px 6px; }
+  #chat { width: 44vw; height: 96px; padding: 3px; } #log { font-size: 10px; line-height: 12px; }
+  #castbar { bottom: 120px; }
+  .win, #inv, #shop, #loot { left: 50%; right: auto; top: 6px; bottom: auto; margin: 0; transform: translateX(-50%); max-height: 92vh; width: auto; }
+  .cbox { padding: 12px; } .cbox h1 { font-size: 26px; }
+}
